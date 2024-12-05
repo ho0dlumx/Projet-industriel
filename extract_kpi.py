@@ -9,11 +9,11 @@ from private_gpt.server.ingest.ingest_service import IngestService
 from private_gpt.settings.settings import Settings
 from private_gpt.server.chat.chat_service import ChatService
 
-# Configuração de logging
+# Logging configuration
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="[%(asctime)s] [%(levelname)s] %(message)s")
 
-# Dicionário de KPIs com prompts para extração
+# KPI dictionary with prompts for extraction
 kpi_prompts = {
     "CO2 Consumption": "What was the total CO2 consumption during this period? (Return only the value as an integer)",
     "Greenhouse Gas Emissions": "What were the total greenhouse gas emissions reported? (Provide the amount in tons)",
@@ -33,7 +33,7 @@ class KPIExtractor:
         self.settings = settings
 
     def ingest_files(self, folder_path: Path):
-        """Ingesta arquivos diretamente da pasta especificada."""
+        """Ingest files directly from the specified folder."""
         try:
             logger.info(f"Starting ingestion for folder: {folder_path}")
             files_to_ingest = [(f.name, f) for f in folder_path.iterdir() if f.is_file() and f.suffix.lower() == ".pdf"]
@@ -44,7 +44,7 @@ class KPIExtractor:
             raise
 
     def wipe_index(self):
-        """Apaga o índice atual."""
+        """Wipe the current index."""
         try:
             logger.info("Wiping the current index...")
             self.ingest_service.wipe()
@@ -54,7 +54,7 @@ class KPIExtractor:
             raise
 
     def extract_kpi(self, kpi_name: str) -> str:
-        """Extrai o valor para um KPI específico usando o ChatService."""
+        """Extract the value for a specific KPI using ChatService."""
         if kpi_name not in kpi_prompts:
             raise ValueError(f"KPI '{kpi_name}' not found in dictionary.")
         prompt = kpi_prompts[kpi_name]
@@ -85,18 +85,18 @@ def main():
     if not folder_path.is_dir():
         raise ValueError(f"Path {args.folder} is not a folder.")
 
-    # Inicializa os serviços
+    # Initialize services
     ingest_service = global_injector.get(IngestService)
-    chat_service = global_injector.get(ChatService)  # Obtenção do singleton do ChatService
+    chat_service = global_injector.get(ChatService)  # Retrieve the ChatService singleton
     settings = global_injector.get(Settings)
     extractor = KPIExtractor(ingest_service, chat_service, settings)
 
     results = []
     try:
-        # Ingesta arquivos da pasta especificada
+        # Ingest files from the specified folder
         extractor.ingest_files(folder_path)
 
-        # Extrai KPIs de cada arquivo
+        # Extract KPIs from each file
         for kpi_name in kpi_prompts.keys():
             try:
                 value = extractor.extract_kpi(kpi_name)
@@ -108,12 +108,12 @@ def main():
             except Exception as e:
                 logger.warning(f"Failed to extract KPI '{kpi_name}': {e}")
 
-        # Limpa o índice após a extração
+        # Wipe the index after extraction
         extractor.wipe_index()
     except Exception as e:
         logger.error(f"Error during processing: {e}")
 
-    # Escreve os resultados em um arquivo CSV
+    # Write results to a CSV file
     output_file = Path(args.output)
     try:
         with output_file.open(mode="w", newline="", encoding="utf-8") as csvfile:
